@@ -1216,7 +1216,7 @@ class GRPOTrainer(Trainer):
         
         # Compute per-token loss based on loss type
         if self.loss_type == "spo":
-            # SPO: Smoothed Policy Optimization
+            # SPO: Simple Policy Optimization 
             # L = -advantage * ratio + |advantage| * (ratio - 1)^2 / (2 * epsilon)
             per_token_loss = -(
                 advantages.unsqueeze(1) * ratio - 
