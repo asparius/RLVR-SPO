@@ -1,7 +1,10 @@
 # Judges
 
-> [!WARNING]
-> TRL Judges is an experimental API which is subject to change at any time.
+<Tip warning={true}>
+
+TRL Judges is an experimental API which is subject to change at any time.
+
+</Tip>
 
 TRL provides judges to easily compare two completions.
 

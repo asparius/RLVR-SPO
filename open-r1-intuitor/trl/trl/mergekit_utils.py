@@ -40,8 +40,8 @@ class MergeConfig:
     r"""
     Configuration class for merging two models using `mergekit`.
 
-    This class provides a structured way to configure and generate merge configurations for various merge methods, such
-    as `linear`, `ties`, `dare_ties`, and `slerp`.
+    This class provides a structured way to configure and generate merge configurations for various merge methods,
+    such as `linear`, `ties`, `dare_ties`, and `slerp`.
 
     Args:
         method (`str`, *optional*, defaults to `"linear"`):
@@ -54,8 +54,8 @@ class MergeConfig:
 
     Note:
 
-        For more details about the merge methods and how they are implemented, see the [MergeKit GitHub
-        repository](https://github.com/arcee-ai/mergekit?tab=readme-ov-file#merge-methods).
+        For more details about the merge methods and how they are implemented, see the
+        [MergeKit GitHub repository](https://github.com/arcee-ai/mergekit?tab=readme-ov-file#merge-methods).
 
     Attributes:
         method (`str`): The merge method to use.
@@ -72,7 +72,9 @@ class MergeConfig:
 
     def __init__(self, method: str = "linear"):
         if not is_mergekit_available():
-            raise ImportError("MergeConfig requires the `mergekit` extra. To install, run `pip install mergekit`.")
+            raise ImportError(
+                "MergeConfig requires the `mergekit` extra. To install, run `pip install trl[mergekit]`."
+            )
         self.method = method
         self.policy_model_path = None
         self.target_model_path = None
@@ -268,12 +270,11 @@ def merge_models(config: MergeConfig, out_path: str):
         out_path (`str`): The output path for the merged model.
     """
     if not is_mergekit_available():
-        raise ImportError("merge_models requires the `mergekit` extra. To install, run `pip install mergekit`.")
+        raise ImportError("merge_models requires the `mergekit` extra. To install, run `pip install trl[mergekit]`.")
     run_merge(
         config,
         out_path=out_path,
         options=MergeOptions(
-            device="auto",
             cuda=torch.cuda.is_available(),
             copy_tokenizer=True,
             lazy_unpickle=False,

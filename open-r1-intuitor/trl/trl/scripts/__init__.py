@@ -18,11 +18,11 @@ from ..import_utils import _LazyModule
 
 
 _import_structure = {
-    "utils": ["DatasetMixtureConfig", "ScriptArguments", "TrlParser", "get_dataset", "init_zero_verbose"],
+    "utils": ["init_zero_verbose", "ScriptArguments", "TrlParser"],
 }
 
 if TYPE_CHECKING:
-    from .utils import DatasetMixtureConfig, ScriptArguments, TrlParser, get_dataset, init_zero_verbose
+    from .utils import ScriptArguments, TrlParser, init_zero_verbose
 else:
     import sys
 

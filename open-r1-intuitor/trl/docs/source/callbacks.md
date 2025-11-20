@@ -19,11 +19,3 @@
 ## MergeModelCallback
 
 [[autodoc]] MergeModelCallback
-
-## BEMACallback
-
-[[autodoc]] BEMACallback
-
-## WeaveCallback
-
-[[autodoc]] WeaveCallback

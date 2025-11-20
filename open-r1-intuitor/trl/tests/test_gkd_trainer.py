@@ -13,23 +13,21 @@
 # limitations under the License.
 
 import os
+import tempfile
+import unittest
 
-import pytest
 import torch
 import torch.nn.functional as F
 from datasets import load_dataset
 from transformers import AutoModelForCausalLM, AutoTokenizer, GenerationConfig
-from transformers.testing_utils import require_liger_kernel
 
 from trl import GKDConfig, GKDTrainer
 from trl.trainer.utils import SIMPLE_CHAT_TEMPLATE
 
-from .testing_utils import TrlTestCase
 
-
-class TestGKDTrainerGenerateOnPolicy(TrlTestCase):
+class TestGKDTrainer(unittest.TestCase):
     @classmethod
-    def setup_class(cls):
+    def setUpClass(cls):
         model_id = "trl-internal-testing/tiny-Qwen2ForCausalLM-2.5"
         cls.tokenizer = AutoTokenizer.from_pretrained(model_id)
         cls.tokenizer.pad_token = cls.tokenizer.eos_token
@@ -70,8 +68,9 @@ class TestGKDTrainerGenerateOnPolicy(TrlTestCase):
 
         # Check if the generated texts start with the original prompts
         for prompt, generated_text in zip(prompts, generated_texts):
-            assert generated_text.startswith(prompt), (
-                f"Generated text '{generated_text}' does not start with prompt '{prompt}'"
+            self.assertTrue(
+                generated_text.startswith(prompt),
+                f"Generated text '{generated_text}' does not start with prompt '{prompt}'",
             )
 
         # Run the generation twice and check if the outputs are identical
@@ -82,11 +81,15 @@ class TestGKDTrainerGenerateOnPolicy(TrlTestCase):
         new_input_ids2, new_attention_mask2, new_labels2 = outputs2
 
         # Check if the two generations are identical
-        assert torch.all(new_input_ids.eq(new_input_ids2)), "Deterministic generations are not identical"
-        assert torch.all(new_attention_mask.eq(new_attention_mask2)), (
-            "Attention masks for deterministic generations are not identical"
+        self.assertTrue(torch.all(new_input_ids.eq(new_input_ids2)), "Deterministic generations are not identical")
+        self.assertTrue(
+            torch.all(new_attention_mask.eq(new_attention_mask2)),
+            "Attention masks for deterministic generations are not identical",
         )
-        assert torch.all(new_labels.eq(new_labels2)), "Labels for deterministic generations are not identical"
+        self.assertTrue(
+            torch.all(new_labels.eq(new_labels2)),
+            "Labels for deterministic generations are not identical",
+        )
 
     def test_generate_on_policy_outputs(self):
         prompts = ["Hello, how are you?", "What's the weather like today?"]
@@ -102,29 +105,29 @@ class TestGKDTrainerGenerateOnPolicy(TrlTestCase):
         )
 
         # Check that outputs is a tuple of three tensors
-        assert isinstance(outputs, tuple)
-        assert len(outputs) == 3
+        self.assertIsInstance(outputs, tuple)
+        self.assertEqual(len(outputs), 3)
 
         new_input_ids, new_attention_mask, new_labels = outputs
 
         # Check shapes
         batch_size = len(prompts)
-        assert new_input_ids.shape[0] == batch_size
-        assert new_attention_mask.shape[0] == batch_size
-        assert new_labels.shape[0] == batch_size
+        self.assertEqual(new_input_ids.shape[0], batch_size)
+        self.assertEqual(new_attention_mask.shape[0], batch_size)
+        self.assertEqual(new_labels.shape[0], batch_size)
 
         # Check types
-        assert isinstance(new_input_ids, torch.Tensor)
-        assert isinstance(new_attention_mask, torch.Tensor)
-        assert isinstance(new_labels, torch.Tensor)
+        self.assertIsInstance(new_input_ids, torch.Tensor)
+        self.assertIsInstance(new_attention_mask, torch.Tensor)
+        self.assertIsInstance(new_labels, torch.Tensor)
 
         # Check that new_input_ids and new_attention_mask have the same shape
-        assert new_input_ids.shape == new_attention_mask.shape
-        assert new_labels.shape == new_attention_mask.shape
+        self.assertEqual(new_input_ids.shape, new_attention_mask.shape)
+        self.assertEqual(new_labels.shape, new_attention_mask.shape)
 
 
-class TestGeneralizedJSDLoss(TrlTestCase):
-    def setup_method(self):
+class TestGeneralizedJSDLoss(unittest.TestCase):
+    def setUp(self):
         self.batch_size = 2
         self.seq_length = 3
         self.vocab_size = 5
@@ -134,7 +137,7 @@ class TestGeneralizedJSDLoss(TrlTestCase):
     def test_uniform_distribution(self):
         logits = torch.ones(1, 1, self.vocab_size)
         loss = GKDTrainer.generalized_jsd_loss(logits, logits)
-        assert round(abs(loss.item() - 0), 5) == 0
+        self.assertAlmostEqual(loss.item(), 0, places=5)
 
     def test_generalized_jsd_loss_edge_cases(self):
         # Setup
@@ -146,29 +149,29 @@ class TestGeneralizedJSDLoss(TrlTestCase):
         expected_loss_beta_1 = F.kl_div(
             F.log_softmax(teacher_logits, dim=-1), F.softmax(student_logits, dim=-1), reduction="batchmean"
         )
-        assert round(abs(loss_beta_1.item() - expected_loss_beta_1.item()), 5) == 0
+        self.assertAlmostEqual(loss_beta_1.item(), expected_loss_beta_1.item(), places=5)
 
         # Case 2: beta = 0 (should be equivalent to KL(teacher || student))
         loss_beta_0 = GKDTrainer.generalized_jsd_loss(student_logits, teacher_logits, beta=0)
         expected_loss_beta_0 = F.kl_div(
             F.log_softmax(student_logits, dim=-1), F.softmax(teacher_logits, dim=-1), reduction="batchmean"
         )
-        assert round(abs(loss_beta_0.item() - expected_loss_beta_0.item()), 5) == 0
+        self.assertAlmostEqual(loss_beta_0.item(), expected_loss_beta_0.item(), places=5)
 
     def test_output_shape(self):
         loss = GKDTrainer.generalized_jsd_loss(self.student_logits, self.teacher_logits)
-        assert torch.is_tensor(loss)
-        assert loss.shape == torch.Size([])
+        self.assertTrue(torch.is_tensor(loss))
+        self.assertEqual(loss.shape, torch.Size([]))
 
     def test_beta_values(self):
         loss_beta_0 = GKDTrainer.generalized_jsd_loss(self.student_logits, self.teacher_logits, beta=0)
         loss_beta_1 = GKDTrainer.generalized_jsd_loss(self.student_logits, self.teacher_logits, beta=1)
-        assert loss_beta_0 != loss_beta_1
+        self.assertNotEqual(loss_beta_0, loss_beta_1)
 
     def test_temperature_scaling(self):
         loss_temp_1 = GKDTrainer.generalized_jsd_loss(self.student_logits, self.teacher_logits, temperature=1)
         loss_temp_2 = GKDTrainer.generalized_jsd_loss(self.student_logits, self.teacher_logits, temperature=2)
-        assert loss_temp_1 != loss_temp_2
+        self.assertNotEqual(loss_temp_1, loss_temp_2)
 
     def test_reduction_methods(self):
         loss_batchmean = GKDTrainer.generalized_jsd_loss(
@@ -178,28 +181,28 @@ class TestGeneralizedJSDLoss(TrlTestCase):
         loss_mean = GKDTrainer.generalized_jsd_loss(self.student_logits, self.teacher_logits, reduction="mean")
         loss_none = GKDTrainer.generalized_jsd_loss(self.student_logits, self.teacher_logits, reduction="none")
 
-        assert loss_batchmean.shape == torch.Size([])
-        assert loss_sum.shape == torch.Size([])
-        assert loss_mean.shape == torch.Size([])
-        assert loss_none.shape == self.student_logits.shape
+        self.assertEqual(loss_batchmean.shape, torch.Size([]))
+        self.assertEqual(loss_sum.shape, torch.Size([]))
+        self.assertEqual(loss_mean.shape, torch.Size([]))
+        self.assertEqual(loss_none.shape, self.student_logits.shape)
 
     def test_symmetry(self):
         student_teacher = GKDTrainer.generalized_jsd_loss(self.student_logits, self.teacher_logits, beta=0.1)
         teacher_student = GKDTrainer.generalized_jsd_loss(self.teacher_logits, self.student_logits, beta=0.1)
-        assert student_teacher != teacher_student
+        self.assertNotEqual(student_teacher, teacher_student)
 
         student_teacher = GKDTrainer.generalized_jsd_loss(self.student_logits, self.teacher_logits, beta=0.5)
         teacher_student = GKDTrainer.generalized_jsd_loss(self.teacher_logits, self.student_logits, beta=0.5)
-        assert student_teacher == teacher_student
+        self.assertEqual(student_teacher, teacher_student)
 
     def test_zero_loss_for_identical_inputs(self):
         identical_logits = torch.randn(self.batch_size, self.seq_length, self.vocab_size)
         loss = GKDTrainer.generalized_jsd_loss(identical_logits, identical_logits)
-        assert round(abs(loss.item() - 0), 6) == 0
+        self.assertAlmostEqual(loss.item(), 0, places=6)
 
 
-class TestGKDTrainer(TrlTestCase):
-    def setup_method(self):
+class GKDTrainerTester(unittest.TestCase):
+    def setUp(self):
         self.model_id = "trl-internal-testing/tiny-Qwen2ForCausalLM-2.5"
         self.model = AutoModelForCausalLM.from_pretrained(self.model_id)
         self.teacher_model = AutoModelForCausalLM.from_pretrained(self.model_id)
@@ -211,76 +214,51 @@ class TestGKDTrainer(TrlTestCase):
             self.tokenizer.chat_template = SIMPLE_CHAT_TEMPLATE
 
     def test_gkd_trainer(self):
-        training_args = GKDConfig(
-            output_dir=self.tmp_dir,
-            dataloader_drop_last=True,
-            eval_strategy="steps",
-            max_steps=4,
-            eval_steps=2,
-            save_steps=2,
-            per_device_train_batch_size=2,
-            per_device_eval_batch_size=2,
-            report_to="none",
-        )
-        dummy_dataset = load_dataset("trl-internal-testing/zen", "conversational_language_modeling")
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            training_args = GKDConfig(
+                output_dir=tmp_dir,
+                dataloader_drop_last=True,
+                eval_strategy="steps",
+                max_steps=4,
+                eval_steps=2,
+                save_steps=2,
+                per_device_train_batch_size=2,
+                per_device_eval_batch_size=2,
+                report_to="none",
+            )
+            dummy_dataset = load_dataset("trl-internal-testing/zen", "conversational_language_modeling")
 
-        trainer = GKDTrainer(
-            model=self.model_id,
-            teacher_model=self.model_id,
-            args=training_args,
-            train_dataset=dummy_dataset["train"],
-            eval_dataset=dummy_dataset["test"],
-            processing_class=self.tokenizer,
-        )
+            trainer = GKDTrainer(
+                model=self.model_id,
+                teacher_model=self.model_id,
+                args=training_args,
+                train_dataset=dummy_dataset["train"],
+                eval_dataset=dummy_dataset["test"],
+                processing_class=self.tokenizer,
+            )
 
-        trainer.train()
+            trainer.train()
 
-        assert trainer.state.log_history[(-1)]["train_loss"] is not None
-        assert trainer.state.log_history[0]["eval_loss"] is not None
-        assert "model.safetensors" in os.listdir(self.tmp_dir + "/checkpoint-2")
-
-    @require_liger_kernel
-    @pytest.mark.xfail(reason="Computing the Liger loss spikes GPU memory usage, causing the test to run OOM.")
-    def test_gkd_trainer_with_liger(self):
-        training_args = GKDConfig(
-            output_dir=self.tmp_dir,
-            report_to="none",
-            use_liger_kernel=True,
-        )
-        dummy_dataset = load_dataset("trl-internal-testing/zen", "conversational_language_modeling")
-
-        trainer = GKDTrainer(
-            model=self.model_id,
-            teacher_model=self.model_id,
-            args=training_args,
-            train_dataset=dummy_dataset["train"],
-            processing_class=self.tokenizer,
-        )
-
-        # Ensure liger fused JSD path is enabled; if not, skip (runtime may lack system libs)
-        if not getattr(trainer, "use_liger_gkd_loss", False):
-            self.skipTest("Liger fused JSD not enabled at runtime; skipping fused-loss assertion")
-
-        trainer.train()
-
-        # Check we logged a train loss
-        assert trainer.state.log_history[-1]["train_loss"] is not None
+            self.assertIsNotNone(trainer.state.log_history[(-1)]["train_loss"])
+            self.assertIsNotNone(trainer.state.log_history[0]["eval_loss"])
+            self.assertIn("model.safetensors", os.listdir(tmp_dir + "/checkpoint-2"))
 
     def test_generation_config_init(self):
-        training_args = GKDConfig(output_dir=self.tmp_dir)
-        dummy_dataset = load_dataset("trl-internal-testing/zen", "conversational_language_modeling")
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            training_args = GKDConfig(output_dir=tmp_dir)
+            dummy_dataset = load_dataset("trl-internal-testing/zen", "conversational_language_modeling")
 
-        trainer = GKDTrainer(
-            model=self.model_id,
-            teacher_model=self.model_id,
-            args=training_args,
-            train_dataset=dummy_dataset["train"],
-            eval_dataset=dummy_dataset["test"],
-            processing_class=self.tokenizer,
-        )
+            trainer = GKDTrainer(
+                model=self.model_id,
+                teacher_model=self.model_id,
+                args=training_args,
+                train_dataset=dummy_dataset["train"],
+                eval_dataset=dummy_dataset["test"],
+                processing_class=self.tokenizer,
+            )
 
-        assert trainer.generation_config.pad_token_id == self.tokenizer.eos_token_id
-        assert trainer.generation_config.eos_token_id == self.model.generation_config.eos_token_id
-        assert trainer.generation_config.max_new_tokens == training_args.max_new_tokens
-        assert trainer.generation_config.temperature == training_args.temperature
-        assert trainer.generation_config.top_k == 0
+            self.assertEqual(trainer.generation_config.pad_token_id, self.tokenizer.eos_token_id)
+            self.assertEqual(trainer.generation_config.eos_token_id, self.model.generation_config.eos_token_id)
+            self.assertEqual(trainer.generation_config.max_new_tokens, training_args.max_new_tokens)
+            self.assertEqual(trainer.generation_config.temperature, training_args.temperature)
+            self.assertEqual(trainer.generation_config.top_k, 0)

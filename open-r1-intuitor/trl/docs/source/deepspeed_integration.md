@@ -1,7 +1,10 @@
 # DeepSpeed Integration
 
-> [!WARNING]
-> Section under construction. Feel free to contribute!
+<Tip warning={true}>
+
+Section under construction. Feel free to contribute!
+
+</Tip>
 
 TRL supports training with DeepSpeed, a library that implements advanced training optimization techniques. These include optimizer state partitioning, offloading, gradient partitioning, and more.
 

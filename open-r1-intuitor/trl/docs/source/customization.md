@@ -1,6 +1,8 @@
 # Training customization
 
-TRL is designed with modularity in mind so that users are able to efficiently customize the training loop for their needs. Below are some examples on how you can apply and test different techniques.  Note: Although these examples use the DPOTrainer, the customization applies to most (if not all) trainers.
+TRL is designed with modularity in mind so that users to be able to efficiently customize the training loop for their needs. Below are some examples on how you can apply and test different techniques.  Note: Although these examples use the DPOTrainer, the customization applies to most (if not all) trainers.
+
+
 
 ## Use different optimizers and schedulers
 
@@ -82,11 +84,11 @@ trainer = DPOTrainer(
 trainer.train()
 ```
 
-## Pass 8-bit reference models
-
+## Pass 8-bit reference models 
+ 
 Since `trl` supports all keyword arguments when loading a model from `transformers` using `from_pretrained`, you can also leverage `load_in_8bit` from `transformers` for more memory efficient fine-tuning.
 
-Read more about 8-bit model loading in `transformers` [Load in 8bit or 4bit](https://huggingface.co/docs/transformers/en/peft#load-in-8bit-or-4bit).
+Read more about 8-bit model loading in `transformers` [here](https://huggingface.co/docs/transformers/en/peft#load-in-8bit-or-4bit).
 
 ```python
 from datasets import load_dataset
@@ -110,10 +112,10 @@ trainer = DPOTrainer(
 trainer.train()
 ```
 
-## Use the accelerator cache optimizer
+## Use the CUDA cache optimizer
 
-When training large models, you should better handle the accelerator cache by iteratively clearing it. To do so, simply pass `optimize_device_cache=True` to `DPOConfig`:
+When training large models, you should better handle the CUDA cache by iteratively clearing it. To do so, simply pass `optimize_cuda_cache=True` to `DPOConfig`:
 
 ```python
-training_args = DPOConfig(..., optimize_device_cache=True)
+training_args = DPOConfig(..., optimize_cuda_cache=True)
 ```

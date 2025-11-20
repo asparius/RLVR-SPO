@@ -12,7 +12,7 @@ system_prompt: "You are a helpful AI Assistant, designed to provided well-reason
 
 # GRPO trainer config
 bf16: true
-beta: 0.005 # kl penalty
+beta: 0 # kl penalty
 use_vllm: true
 do_eval: false
 gradient_accumulation_steps: 32
@@ -26,14 +26,15 @@ log_level: info
 logging_first_step: true
 logging_steps: 5
 logging_strategy: steps
+loss_type: "grpo"
 lr_scheduler_type: cosine
 max_prompt_length: 512
 max_completion_length: 3072
 max_steps: -1
-num_generations: 7
-num_train_epochs: 1
+num_generations: 3
+num_train_epochs: 2
 num_iterations: 1
-output_dir: data/Qwen2.5-GRPO-3B
+output_dir: data/Qwen2.5-GRPO-3B-kl0-2ep
 overwrite_output_dir: true
 per_device_eval_batch_size: 4
 per_device_train_batch_size: 4
@@ -47,5 +48,6 @@ reward_weights:
 save_strategy: "steps"
 save_total_limit: 6
 save_steps: 10
-seed: 7
+seed: 3
 warmup_ratio: 0.1
+attn_implementation: "sdpa"
